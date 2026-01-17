@@ -1,27 +1,43 @@
 #!/bin/bash
 # Send a command to Emacs through term.el.
 
+set -eu
+
 function usage() {
-    echo "Usage: $(basename "${0}") command [arg]"
+    echo "Usage: $(basename "${0}") command [arg]" >&2
     exit 1
 }
 
-test -z "${1}" && usage
+test -z "${1:-}" && usage
 CMD="${1}"
 
-if [ -n "${2}" ]; then
+if [ -n "${2:-}" ]; then
     ARG=" ${2}"
 else
     ARG=''
 fi
 
-# Sanity check before printing; not foolproof, unfortunately (try tmux, then
-# ssh). Screen uses a different escape sequence from tmux, but there doesn't
-# seem to be a definitive way to distinguish between the two. :-(
-if [[ "${TERM}" =~ 'eterm' ]]; then
+test -n "${3:-}" && usage
+
+# Only print the escape sequence if we're sure it'll be recognised. There are
+# three valid cases:
+#
+# 1. Running directly in term.el, where 'TERM=eterm.*'.
+#
+# 2. Running in a newer version of tmux which sets 'TERM=tmux.*', and tmux is in
+# term.el.
+#
+# 3. Running in an older version of tmux which sets 'TERM=screen.*', and TMUX is
+# set, and tmux is in term.el. If 'TMUX' isn't set, we can't tell if we're in
+# tmux or screen; they use different passthrough escape sequences, so we do
+# nothing. (This happens e.g. with SSH inside tmux.)
+
+if [ "${TERM:0:5}" = 'eterm' ]; then
     printf '\033AnSiTTeRmCmD %s%s\n' "${CMD}" "${ARG}"
-elif [ "${TERM}" = 'screen' ] && [ -n "${TMUX}" ] &&
-    [[ "$(tmux display-message -p '#{client_termname}')" =~ 'eterm' ]]; then
+elif {
+    [ "${TERM:0:4}" = 'tmux' ] ||
+        { [ "${TERM:0:5}" = 'screen' ] && [ -n "${TMUX:-}" ]; }
+} && [[ "$(tmux display-message -p '#{client_termname}')" =~ ^eterm ]]; then
     # shellcheck disable=SC1003
     printf '\033Ptmux;\033\033AnSiTTeRmCmD %s%s\n\033\\' "${CMD}" "${ARG}"
 fi
