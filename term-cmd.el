@@ -4,7 +4,7 @@
 
 ;; Author: Callie Cameron <callie@calliecameron.com>
 ;; Version: 1.4
-;; URL: https://github.com/calliecameron/term-cmd
+;; URL: https://codeberg.org/calliecameron/term-cmd
 ;; Keywords: processes
 ;; Package-Requires: ((emacs "27.2") (dash "2.12.0") (f "0.18.2"))
 
@@ -39,7 +39,7 @@
 ;;
 ;; This is a library, and doesn't make any user-visible changes.  For
 ;; an example of something that uses it, see the 'term-alert' package
-;; (https://github.com/calliecameron/term-alert).
+;; (https://codeberg.org/calliecameron/term-alert).
 ;;
 ;;
 ;; Usage

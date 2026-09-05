@@ -16,7 +16,7 @@ instead be interpreted by Emacs.
 
 This is a library, and doesn't make any user-visible changes. For an example of
 something that uses it, see
-[term-alert](https://github.com/calliecameron/term-alert).
+[term-alert](https://codeberg.org/calliecameron/term-alert).
 
 ## Usage
 
