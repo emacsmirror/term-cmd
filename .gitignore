@@ -1,5 +1,18 @@
+# Auto-generated; edit devenv.nix instead
+
 *~
-*.elc
-.cask
-emacs.d
-dist
+.cask/
+.devenv*
+.direnv
+.editorconfig
+.gitleaks.toml
+.gitlint
+.markdownlint.json
+.pre-commit-config.yaml
+.prettierignore
+.shellcheckrc
+.typos.toml
+devenv.local.nix
+devenv.local.yaml
+dist/
+emacs.d/
