@@ -1,4 +1,4 @@
-{ ... }: {
+{ pkgs, ... }: {
   template = {
     project = {
       name = "term-cmd";
@@ -83,4 +83,6 @@
 
     clean.cleanCommands = [ "rm -rf dist emacs.d .cask" ];
   };
+
+  packages = [ pkgs.emacs-gtk ];
 }
