@@ -1,0 +1,22 @@
+# Auto-generated; edit devenv.nix instead
+
+*~
+.ast-grep/
+.coverage
+.devenv*
+.direnv
+.editorconfig
+.gitleaks.toml
+.gitlint
+.htmlvalidate.json
+.markdownlint.json
+.pre-commit-config.yaml
+.prettierignore
+.sgconfig.yml
+.shellcheckrc
+.typos.toml
+.yamllint.yaml
+__pycache__/
+devenv.local.nix
+devenv.local.yaml
+node_modules/

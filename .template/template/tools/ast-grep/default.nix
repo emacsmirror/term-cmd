@@ -1,0 +1,121 @@
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
+let
+  inherit (lib)
+    getExe
+    mkDefault
+    mkEnableOption
+    mkIf
+    mkMerge
+    mkOption
+    ;
+  inherit (lib.attrsets) attrsToList;
+  inherit (lib.strings) escapeShellArg;
+  inherit (lib.types)
+    attrsOf
+    json
+    package
+    path
+    submodule
+    ;
+
+  cfg = config.template.tools.astGrep;
+  hooks = config.git-hooks.hooks;
+  configFile = ".sgconfig.yml";
+  baseDir = ".ast-grep";
+  rulesDir = "${baseDir}/rules";
+  testsDir = "${baseDir}/tests";
+  snapshotsDir = "${testsDir}/__snapshots__";
+
+  astGrepRuleType = submodule {
+    options = {
+      rule = mkOption { type = path; };
+      test = mkOption { type = path; };
+      snapshot = mkOption { type = path; };
+    };
+  };
+in
+{
+  options.template.tools.astGrep = {
+    enable = mkEnableOption "enable";
+
+    package = mkOption {
+      type = package;
+      default = pkgs.ast-grep;
+    };
+
+    config = mkOption {
+      type = json;
+      default = { };
+    };
+
+    rules = mkOption {
+      type = attrsOf astGrepRuleType;
+      default = { };
+    };
+  };
+
+  config = mkIf cfg.enable {
+    packages = [ cfg.package ];
+
+    files = mkMerge (
+      [ { "${configFile}".yaml = cfg.config; } ]
+      ++ (map (
+        { name, value }:
+        let
+          file = source: {
+            copyMode = "copy";
+            source = source;
+          };
+        in
+        {
+          "${rulesDir}/${name}.yml" = file value.rule;
+          "${testsDir}/${name}-test.yml" = file value.test;
+          "${snapshotsDir}/${name}-snapshot.yml" = file value.snapshot;
+        }
+      ) (attrsToList cfg.rules))
+    );
+
+    git-hooks.hooks = {
+      ast-grep = {
+        enable = true;
+        name = "general: custom lint";
+        package = cfg.package;
+        entry = "${getExe hooks.ast-grep.package} --config ${escapeShellArg configFile} scan --color never --no-ignore hidden --update-all";
+        types_or = [ "text" ];
+      };
+
+      ast-grep-test = {
+        enable = true;
+        name = "general: test custom lint rules";
+        package = cfg.package;
+        entry = "${getExe hooks.ast-grep-test.package} --config ${escapeShellArg configFile} test --update-all";
+        pass_filenames = false;
+      };
+    };
+
+    template = {
+      gitignore = [
+        configFile
+        "${baseDir}/"
+      ];
+
+      tools = {
+        astGrep.config = {
+          ruleDirs = [ rulesDir ];
+          testConfigs = [ { testDir = testsDir; } ];
+        };
+
+        prettier.ignore = [ "/${snapshotsDir}/*.yml" ];
+
+        yamllint.ignore = [ "/${snapshotsDir}/*.yml" ];
+      };
+
+      languages.yaml.enable = mkDefault true;
+    };
+  };
+}
