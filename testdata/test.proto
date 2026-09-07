@@ -1,0 +1,7 @@
+syntax = "proto2";
+
+package testdata;
+
+message Test {
+  optional string test = 1;
+}

@@ -129,6 +129,15 @@ in
       };
     };
 
+    tasks = {
+      "${config.template.taskPrefix}:remove-legacy-hooks" = {
+        exec = "rm -f .git/hooks/*.legacy";
+        before = [ "devenv:enterShell" ];
+        after = [ "devenv:git-hooks:install" ];
+        cwd = config.git.root;
+      };
+    };
+
     template = {
       gitignore = [ ".pre-commit-config.yaml" ];
 

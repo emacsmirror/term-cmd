@@ -4,6 +4,7 @@ let
   inherit (lib.types) listOf nonEmptyStr;
 
   cfg = config.template.updates.deps;
+  taskName = "${config.template.taskPrefix}:update-deps";
 in
 {
   options.template.updates.deps = {
@@ -17,16 +18,16 @@ in
 
   config = mkIf cfg.enable {
     tasks = {
-      "template:update-deps" = {
+      "${taskName}" = {
         exec = "true";
-        cwd = "${config.git.root}";
+        cwd = config.git.root;
         after = cfg.tasks;
       };
     };
 
     scripts = {
       template-update-deps.exec = ''
-        devenv tasks run template:update-deps
+        devenv tasks run ${taskName}
       '';
     };
   };

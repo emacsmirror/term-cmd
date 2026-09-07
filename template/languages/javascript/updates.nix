@@ -4,14 +4,14 @@ let
   inherit (lib) mkIf;
 
   cfg = config.template.languages.javascript;
-  taskName = "template:update-deps-javascript";
+  taskName = "${config.template.taskPrefix}:update-deps-javascript";
 in
 {
   config = mkIf cfg.enable {
     tasks = {
       "${taskName}" = {
         exec = readFile ./npm-update-deps.sh;
-        cwd = "${config.git.root}";
+        cwd = config.git.root;
       };
     };
 

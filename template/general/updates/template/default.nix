@@ -9,6 +9,7 @@ let
   inherit (lib) mkEnableOption mkIf;
 
   cfg = config.template.updates.template;
+  taskName = "${config.template.taskPrefix}:update-template";
 in
 {
   options.template.updates.template = {
@@ -19,18 +20,18 @@ in
     packages = [ pkgs.jq ];
 
     tasks = {
-      "template:update-template" = {
+      "${taskName}" = {
         exec =
           replaceStrings [ "@templateDir@" "@repo@" ] [ config.template.dir config.template.templateRepo ]
             (readFile ./update-template.sh);
-        cwd = "${config.git.root}";
+        cwd = config.git.root;
         showOutput = true;
       };
     };
 
     scripts = {
       template-update-template.exec = ''
-        devenv tasks run --input "ref=''${1:-}" template:update-template
+        devenv tasks run --input "ref=''${1:-}" ${taskName}
       '';
     };
   };

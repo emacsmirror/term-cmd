@@ -11,16 +11,16 @@ let
     attrValues
     elemAt
     isAttrs
-    listToAttrs
     match
     ;
   inherit (pkgs) runCommandLocal;
   inherit (pkgs.writers) writeTOML;
   inherit (lib) mkDefault mkIf;
   inherit (lib.attrsets)
-    attrsToList
+    genAttrs'
     mapAttrs
     mapAttrsRecursiveCond
+    mapAttrsToList
     nameValuePair
     recursiveUpdate
     ;
@@ -44,7 +44,7 @@ let
         in
         nameValuePair name spec;
     in
-    listToAttrs (map parseDep deps);
+    genAttrs' deps parseDep;
 
   seedDeps = {
     project.dependencies = cfg.seedDependencies;
@@ -62,12 +62,7 @@ let
     );
   };
 
-  renderDeps =
-    deps:
-    let
-      renderDep = { name, value }: "${name}${value}";
-    in
-    map renderDep (attrsToList deps);
+  renderDeps = deps: mapAttrsToList (name: value: "${name}${value}") deps;
 
   mergedDeps = mapAttrsRecursiveCond (set: all isAttrs (attrValues set)) (
     _path: value: renderDeps value
