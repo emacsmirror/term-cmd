@@ -17,18 +17,25 @@ let
     mkIf
     mkOption
     ;
-  inherit (lib.lists) allUnique last naturalSort;
+  inherit (lib.attrsets) genAttrs;
+  inherit (lib.lists)
+    allUnique
+    last
+    naturalSort
+    optionals
+    uniqueStrings
+    ;
   inherit (lib.strings) join trim;
   inherit (lib.types)
     attrsOf
     bool
+    listOf
     nonEmptyListOf
     nonEmptyStr
     package
     strMatching
     toml
     ;
-  inherit (lib.versions) majorMinor;
   inherit (templateLib) localRelPath;
 
   cfg = config.template.languages.python;
@@ -53,30 +60,33 @@ let
     naturalSort (attrNames (inputs.nixpkgs-python.packages."${pkgs.stdenv.system}"))
   );
 
-  versionString = strMatching "3\\.[1-9][0-9]*(\\.[1-9][0-9]*)?";
+  versionString = strMatching "[1-9][0-9]*\\.[1-9][0-9]*";
 
   sortedVersions = naturalSort cfg.versions;
-  sortedMinorVersions = naturalSort (map majorMinor cfg.versions);
 
-  requiresPython = ">=${majorMinor cfg.minVersion}";
+  nixPackagesFrom = names: (ps: map (name: ps."${name}") names);
 
-  buildSystemRequires = runCommandLocal "buildSystemRequires" { } ''
-    ${getExe python.uv.package} init \
-      --python=${getExe python.package} \
-      --offline \
-      --no-cache \
-      --name=temp \
-      --bare \
-      --package \
-      --build-backend=uv \
-      --vcs=none \
-      --author-from=none \
-      --no-workspace \
-      temp
+  buildSystemRequires =
+    let
+      file = runCommandLocal "buildSystemRequires" { } ''
+        ${getExe python.uv.package} init \
+          --python=${getExe python.package} \
+          --offline \
+          --no-cache \
+          --name=temp \
+          --bare \
+          --package \
+          --build-backend=uv \
+          --vcs=none \
+          --author-from=none \
+          --no-workspace \
+          temp
 
-    ${getExe' pkgs.yq "tomlq"} '."build-system".requires[0]' temp/pyproject.toml |
-      ${getExe pkgs.gnused} 's/"//g' >$out
-  '';
+        ${getExe' pkgs.yq "tomlq"} '."build-system".requires[0]' temp/pyproject.toml |
+          ${getExe pkgs.gnused} 's/"//g' >$out
+      '';
+    in
+    trim (readFile file);
 
   snapshotSource = "/${config.template.dir}/languages/python/ast-grep-snapshot.yml";
 
@@ -93,6 +103,11 @@ in
     enable = mkEnableOption "enable";
 
     versions = mkOption { type = nonEmptyListOf versionString; };
+
+    nixPackages = mkOption {
+      type = listOf nonEmptyStr;
+      default = [ ];
+    };
 
     isPackage = mkOption {
       type = bool;
@@ -123,6 +138,11 @@ in
     config = mkOption {
       type = toml;
       default = { };
+    };
+
+    package = mkOption {
+      type = attrsOf package;
+      readOnly = true;
     };
 
     minVersion = mkOption {
@@ -166,8 +186,8 @@ in
   config = mkIf cfg.enable {
     assertions = [
       {
-        assertion = allUnique (map majorMinor cfg.versions);
-        message = "Python versions must have different minor versions; got ${toString cfg.versions}";
+        assertion = allUnique cfg.versions;
+        message = "Python versions must be different; got ${toString cfg.versions}";
       }
       {
         assertion =
@@ -182,7 +202,7 @@ in
 
     languages.python = {
       enable = true;
-      version = cfg.maxVersion;
+      package = cfg.package."${cfg.maxVersion}";
       venv.enable = true;
       uv = {
         enable = true;
@@ -233,15 +253,10 @@ in
             "--all-extras"
             "--no-default-groups"
           ]
-          ++ (
-            if !cfg.exportRequirementsTxt.includeHashes then
-              [
-                "--no-editable"
-                "--no-hashes"
-              ]
-            else
-              [ ]
-          )
+          ++ (optionals (!cfg.exportRequirementsTxt.includeHashes) [
+            "--no-editable"
+            "--no-hashes"
+          ])
         );
       };
     };
@@ -257,8 +272,16 @@ in
 
     template = {
       languages.python = {
+        package = genAttrs cfg.versions (
+          version:
+          inputs.nixpkgs-python.packages."${pkgs.stdenv.system}"."${version}".withPackages (
+            nixPackagesFrom (uniqueStrings cfg.nixPackages)
+          )
+        );
+
         minVersion = head sortedVersions;
         maxVersion = last sortedVersions;
+
         fileTags = [
           "python"
           "pyi"
@@ -268,13 +291,13 @@ in
           project = {
             name = project.nameSlug;
             version = project.version;
-            requires-python = requiresPython;
+            requires-python = ">=${cfg.minVersion}";
             readme = project.readmeFile;
             license = project.license;
             license-files = [ project.licenseFile ];
           };
           build-system = {
-            requires = [ (trim (readFile buildSystemRequires)) ];
+            requires = [ buildSystemRequires ];
             build-backend = "uv_build";
           };
           tool = {
@@ -288,7 +311,7 @@ in
         internalVersion = internalVersion;
         internalPython =
           inputs.nixpkgs-python.packages."${pkgs.stdenv.system}"."${cfg.internalVersion}".withPackages
-            (ps: (map (name: ps."${name}") (attrNames internalDeps)));
+            (nixPackagesFrom (attrNames internalDeps));
         seedDependencies = mkIf cfg.includeInternalDeps internalDeps;
         seedDevDependencies = mkIf cfg.includeInternalDeps internalDevDeps;
       };
@@ -316,7 +339,7 @@ in
       };
 
       project.readme.badges = mkIf cfg.isPackage [
-        "![python](https://img.shields.io/badge/python-${join "_%7C_" sortedMinorVersions}-blue)"
+        "![python](https://img.shields.io/badge/python-${join "_%7C_" sortedVersions}-blue)"
       ];
 
       gitignore = [ "__pycache__/" ];

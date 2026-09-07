@@ -4,7 +4,7 @@ let
   inherit (lib) mkIf;
 
   cfg = config.template.languages.python;
-  taskName = "template:update-deps-python";
+  taskName = "${config.template.taskPrefix}:update-deps-python";
 in
 {
   config = mkIf cfg.enable {
@@ -12,7 +12,7 @@ in
       "${taskName}" = {
         package = cfg.internalPython;
         exec = readFile ./uv_update_deps.py;
-        cwd = "${config.git.root}";
+        cwd = config.git.root;
       };
     };
 

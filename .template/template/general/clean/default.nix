@@ -5,6 +5,9 @@ let
   inherit (lib.types) listOf nonEmptyStr;
 
   cfg = config.template.clean;
+  taskPrefix = config.template.taskPrefix;
+  clean = "${taskPrefix}:clean";
+  deepClean = "${taskPrefix}:deepclean";
 in
 {
   options.template.clean = {
@@ -23,26 +26,24 @@ in
 
   config = mkIf cfg.enable {
     tasks = {
-      "template:clean" = {
+      "${clean}" = {
         exec = join "\n" cfg.cleanCommands;
-        cwd = "${config.git.root}";
+        cwd = config.git.root;
       };
-      "template:deepclean" = {
+      "${deepClean}" = {
         exec = join "\n" cfg.deepCleanCommands;
-        cwd = "${config.git.root}";
-        after = [ "template:clean" ];
+        cwd = config.git.root;
+        after = [ clean ];
       };
-
     };
 
     scripts = {
       template-clean.exec = ''
-        devenv tasks run template:clean
+        devenv tasks run ${clean}
       '';
       template-deepclean.exec = ''
-        devenv tasks run template:deepclean
+        devenv tasks run ${deepClean}
       '';
-
     };
 
     template.clean.cleanCommands = [ "find . '(' -type f -name '*~' ')' -delete" ];

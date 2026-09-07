@@ -9,19 +9,18 @@ let
     getExe
     mkEnableOption
     mkIf
-    mkMerge
     mkOption
     ;
+  inherit (lib.attrsets) genAttrs' nameValuePair;
   inherit (lib.lists) optional;
   inherit (lib.strings) replaceString;
   inherit (lib.types) package toml;
-  inherit (lib.versions) majorMinor;
 
   cfg = config.template.tools.ruff;
   hooks = config.git-hooks.hooks;
   python = config.template.languages.python;
 
-  targetVersion = version: "py${replaceString "." "" (majorMinor version)}";
+  targetVersion = version: "py${replaceString "." "" version}";
 in
 {
   options.template.tools.ruff = {
@@ -41,38 +40,31 @@ in
   config = mkIf cfg.enable {
     packages = [ cfg.package ];
 
-    git-hooks.hooks = mkMerge (
-      [
-        {
-          ruff-format = {
-            enable = true;
-            package = cfg.package;
-            name = "python: format";
-            entry = "${getExe hooks.ruff-format.package} format --force-exclude";
-            types = [ ];
-            types_or = python.fileTags;
-            require_serial = true;
-          };
-        }
-      ]
-      ++ (map (
-        rawVersion:
-        let
-          version = majorMinor rawVersion;
-          id = "ruff-check-${version}";
-        in
-        {
-          "${id}" = {
-            enable = true;
-            package = cfg.package;
-            name = "python ${version}: lint";
-            entry = "${getExe hooks."${id}".package} check --force-exclude --target-version=${targetVersion version} --fix";
-            types_or = python.fileTags;
-            require_serial = true;
-          };
-        }
-      ) python.versions)
-    );
+    git-hooks.hooks = {
+      ruff-format = {
+        enable = true;
+        package = cfg.package;
+        name = "python: format";
+        entry = "${getExe hooks.ruff-format.package} format --force-exclude";
+        types = [ ];
+        types_or = python.fileTags;
+        require_serial = true;
+      };
+    }
+    // (genAttrs' python.versions (
+      version:
+      let
+        id = "ruff-check-${version}";
+      in
+      nameValuePair id {
+        enable = true;
+        package = cfg.package;
+        name = "python ${version}: lint";
+        entry = "${getExe hooks."${id}".package} check --force-exclude --target-version=${targetVersion version} --fix";
+        types_or = python.fileTags;
+        require_serial = true;
+      }
+    ));
 
     template = {
       languages.python.config.tool.ruff = cfg.config;

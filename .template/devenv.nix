@@ -12,7 +12,7 @@ in
     project = {
       name = "Project Template";
       author = "Callie Cameron";
-      version = "0.2.1";
+      version = "0.2.2";
       copyrightYears = {
         start = "2025";
         end = "2026";
@@ -59,6 +59,7 @@ in
       json.enable = true;
       markdown.enable = true;
       nix.enable = true;
+      protobuf.enable = true;
       python = {
         enable = true;
         versions = [ config.template.languages.python.internalVersion ];

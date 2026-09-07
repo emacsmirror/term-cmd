@@ -1,15 +1,14 @@
-{
-  pkgs,
-  lib,
-  inputs,
-  config,
-  ...
-}:
+{ lib, config, ... }:
 let
   inherit (lib) getExe mkIf mkMerge;
+  inherit (lib.attrsets) genAttrs' nameValuePair;
   inherit (lib.lists) optional;
-  inherit (lib.strings) escapeShellArg join;
-  inherit (lib.versions) majorMinor;
+  inherit (lib.strings)
+    concatMapStringsSep
+    escapeShellArg
+    join
+    optionalString
+    ;
 
   cfg = config.template.languages.python;
   project = config.template.project;
@@ -24,7 +23,7 @@ let
       ++ (optional (version != cfg.maxVersion) "--isolated")
       ++ [
         "--python"
-        (getExe inputs.nixpkgs-python.packages."${pkgs.stdenv.system}"."${version}")
+        (getExe cfg.package."${version}")
         "pytest"
         "-m"
         (escapeShellArg tag)
@@ -45,25 +44,17 @@ in
       cat ${./test-template.py}
     '';
 
-    git-hooks.hooks = mkMerge (
-      map (
-        rawVersion:
-        let
-          version = majorMinor rawVersion;
-          id = "pytest-fast-${version}";
-        in
-        {
-          "${id}" = {
-            enable = true;
-            name = "python ${version}: fast tests";
-            entry = pytestArgs rawVersion "not slow";
-            pass_filenames = false;
-          };
-        }
-      ) cfg.versions
+    git-hooks.hooks = genAttrs' cfg.versions (
+      version:
+      nameValuePair "pytest-fast-${version}" {
+        enable = true;
+        name = "python ${version}: fast tests";
+        entry = pytestArgs version "not slow";
+        pass_filenames = false;
+      }
     );
 
-    enterTest = join "\n" (map (version: pytestArgs version "slow") cfg.versions);
+    enterTest = concatMapStringsSep "\n" (version: pytestArgs version "slow") cfg.versions;
 
     template = {
       languages.python = {
@@ -72,7 +63,7 @@ in
             coverage.run.omit = [ "/nix/store/*" ];
             pytest = {
               addopts = [
-                "--cov${if cfg.isPackage then "=${project.nameSlugUnderscore}" else ""}"
+                "--cov${optionalString cfg.isPackage "=${project.nameSlugUnderscore}"}"
                 "--cov-report=term-missing"
                 "--strict-markers"
                 "--suppress-no-test-exit-code"

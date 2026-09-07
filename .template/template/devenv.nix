@@ -20,6 +20,7 @@ let
 
   cfg = config.template;
   defaultDir = ".template";
+  taskPrefix = "template";
 in
 {
   imports = findModules [
@@ -61,6 +62,12 @@ in
       internal = true;
       readOnly = true;
     };
+
+    taskPrefix = mkOption {
+      type = nonEmptyStr;
+      internal = true;
+      readOnly = true;
+    };
   };
 
   config = mkMerge [
@@ -71,6 +78,7 @@ in
 
       template = {
         defaultDir = defaultDir;
+        taskPrefix = taskPrefix;
         preCommit.enable = mkDefault true;
         clean.enable = mkDefault true;
 
