@@ -33,7 +33,10 @@ in
     packages = [ cfg.package ];
 
     tasks."${taskName}" = {
-      exec = "npins -d ${escapeShellArg cfg.root} update";
+      exec = ''
+        npins -d ${escapeShellArg cfg.root} upgrade
+        npins -d ${escapeShellArg cfg.root} update
+      '';
       cwd = config.git.root;
     };
 
