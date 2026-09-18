@@ -58,6 +58,13 @@ in your environment or shell's startup files (e.g. ~/.profile, ~/.bashrc,
 inside tmux or on other machines to send commands back to Emacs on your local
 machine.
 
+## Development
+
+Uses [Devenv](https://devenv.sh/) with [this template](https://codeberg.org/calliecameron/project-template).
+
+With Devenv installed, run `devenv shell` in the project directory, or if using
+[direnv integration](https://devenv.sh/integrations/direnv/), run `direnv allow`.
+
 ## AI Policy
 
 Use of generative AI is not permitted in this project.

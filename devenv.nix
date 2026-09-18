@@ -75,7 +75,7 @@
 
     languages.shell.enable = true;
 
-    gitignore = [
+    gitignore.ignore = [
       ".cask/"
       "emacs.d/"
       "dist/"
