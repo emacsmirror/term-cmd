@@ -25,8 +25,8 @@ in
 
     git-hooks.hooks.nixf-diagnose = {
       enable = true;
-      package = cfg.package;
       name = "nix: lint";
+      package = cfg.package;
     };
   };
 }

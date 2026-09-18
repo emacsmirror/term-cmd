@@ -2,11 +2,11 @@
 
 A [Devenv](https://devenv.sh/) template for multi-language projects.
 
-This is mainly intended for personal use – it includes the languages and tools that I use.
+This is mainly intended for personal use – it includes the [languages](template/languages) and [tools](template/tools) that I use.
 
 ## Installation
 
-Run `./install.sh` in your project directory.
+Run `install.sh` in your project directory.
 
 ## Usage
 

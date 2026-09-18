@@ -20,7 +20,7 @@ let
 
   script = writeShellApplication {
     name = "shebang-checker";
-    text = replaceStrings [ "@shebangs@" ] [ (join "|" cfg.allowedShebangs) ] (
+    text = replaceStrings [ "@shebangs@" ] [ (join "|" cfg.allowShebangs) ] (
       readFile ./shebang-checker.sh
     );
     runtimeInputs = with pkgs; [
@@ -34,7 +34,7 @@ in
   options.template.tools.shebangChecker = {
     enable = mkEnableOption "enable";
 
-    allowedShebangs = mkOption {
+    allowShebangs = mkOption {
       type = listOf nonEmptyStr;
       default = [ ];
     };

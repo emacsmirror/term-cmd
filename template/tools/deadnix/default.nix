@@ -25,8 +25,8 @@ in
 
     git-hooks.hooks.deadnix = {
       enable = true;
-      package = cfg.package;
       name = "nix: dead code";
+      package = cfg.package;
     };
   };
 }

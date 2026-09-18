@@ -3,16 +3,21 @@ let
   inherit (builtins)
     concatMap
     filter
+    isAttrs
+    isList
     pathExists
     readDir
     readFile
     ;
-  inherit (pkgs) runCommandLocal;
-  inherit (lib.attrsets) attrsToList;
-  inherit (lib.strings) escapeShellArg;
-  inherit (lib.types) pathWith;
+  inherit (lib.attrsets)
+    attrsToList
+    filterAttrs
+    mapAttrs
+    recursiveUpdate
+    ;
 
-  seededDeps = import ./seeded-deps.nix { inherit lib; };
+  formatters = import ./formatters.nix { inherit pkgs lib; };
+  types = import ./types.nix { inherit lib; };
 
   findModules =
     dirs:
@@ -30,11 +35,6 @@ let
     in
     concatMap findModulesDir dirs;
 
-  localRelPath = pathWith {
-    inStore = false;
-    absolute = false;
-  };
-
   readFileOr =
     config: file: parser: default:
     let
@@ -42,23 +42,33 @@ let
     in
     if pathExists path then parser (readFile path) else default;
 
-  formatWithPrettier =
-    config: writer: filename: data:
+  prune =
+    input:
     let
-      raw = writer filename data;
-    in
-    runCommandLocal filename { } ''
-      cat ${escapeShellArg raw} >>$out
+      pruneAttrs =
+        input:
+        filterAttrs (_name: value: value != [ ] && value != { }) (
+          mapAttrs (_name: value: prune value) input
+        );
 
-      ${config.template.tools.prettier.formatCommand} $out
-    '';
+      pruneList = input: filter (value: value != [ ] && value != { }) (map prune input);
+    in
+    if isAttrs input then
+      pruneAttrs input
+    else if isList input then
+      pruneList input
+    else
+      input;
+
+  mergeDeps = seedDeps: currentDeps: prune (recursiveUpdate seedDeps currentDeps);
 in
 {
   inherit
-    seededDeps
+    formatters
+    types
     findModules
-    localRelPath
     readFileOr
-    formatWithPrettier
+    prune
+    mergeDeps
     ;
 }

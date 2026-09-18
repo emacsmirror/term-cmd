@@ -16,7 +16,7 @@ in
       nixfmt.enable = mkDefault true;
       nixf-diagnose.enable = mkDefault true;
       deadnix.enable = mkDefault true;
-      shebangChecker.allowedShebangs = [ "/usr/bin/env nix-shell" ];
+      shebangChecker.allowShebangs = [ "/usr/bin/env nix-shell" ];
     };
   };
 }

@@ -7,12 +7,14 @@
 }:
 let
   inherit (builtins) attrNames readFile replaceStrings;
-  inherit (pkgs) runCommandLocal writeText;
+  inherit (pkgs) runCommandLocal;
   inherit (lib)
     getExe
     mkAfter
     mkBefore
     mkDefault
+    mkEnableOption
+    mkIf
     mkMerge
     mkOption
     ;
@@ -20,21 +22,19 @@ let
     escapeShellArg
     join
     optionalString
-    replaceString
     trim
     ;
   inherit (lib.types)
+    bool
     enum
     lines
     listOf
     nonEmptyStr
-    strMatching
     ;
-  inherit (templateLib) formatWithPrettier;
+  inherit (templateLib.formatters) formatMarkdown;
+  inherit (templateLib.types) relativePath threeComponentVersion year;
 
   cfg = config.template.project;
-  semVer = strMatching "[0-9]+\.[0-9]+\.[0-9]";
-  year = strMatching "[1-9][0-9][0-9][0-9]";
 
   licenses =
     let
@@ -71,6 +71,21 @@ let
 
   license = licenses."${cfg.license}";
 
+  developmentText = ''
+    ## Development
+
+    Uses [Devenv](https://devenv.sh/) with [this template](${config.template.templateRepo}).
+
+    With Devenv installed, run `devenv shell` in the project directory, or if using
+    [direnv integration](https://devenv.sh/integrations/direnv/), run `direnv allow`.
+  '';
+
+  aiPolicyText = ''
+    ## AI Policy
+
+    Use of generative AI is not permitted in this project.
+  '';
+
   slugify =
     name:
     let
@@ -78,7 +93,7 @@ let
         ${getExe config.template.languages.python.internalPython} ${./slugify.py} ${escapeShellArg name} >$out
       '';
     in
-    trim (readFile "${file}");
+    trim (readFile file);
 in
 {
   options.template.project = {
@@ -89,14 +104,9 @@ in
       default = slugify cfg.name;
     };
 
-    nameSlugUnderscore = mkOption {
-      type = nonEmptyStr;
-      readOnly = true;
-    };
-
     author = mkOption { type = nonEmptyStr; };
 
-    version = mkOption { type = semVer; };
+    version = mkOption { type = threeComponentVersion; };
 
     license = mkOption {
       type = enum (attrNames licenses);
@@ -116,22 +126,47 @@ in
         type = listOf nonEmptyStr;
         default = [ ];
       };
+
+      sections = {
+        development = mkOption {
+          type = bool;
+          default = true;
+        };
+
+        aiPolicy = mkOption {
+          type = bool;
+          default = true;
+        };
+
+        license = mkOption {
+          type = bool;
+          default = true;
+        };
+      };
+    };
+
+    licenseFile = {
+      enable = mkEnableOption "enable";
+
+      file = mkOption {
+        type = relativePath;
+        internal = true;
+        readOnly = true;
+      };
+    };
+
+    readmeFile = {
+      enable = mkEnableOption "enable";
+
+      file = mkOption {
+        type = relativePath;
+        internal = true;
+        readOnly = true;
+      };
     };
 
     versionFile = mkOption {
-      type = nonEmptyStr;
-      internal = true;
-      readOnly = true;
-    };
-
-    licenseFile = mkOption {
-      type = nonEmptyStr;
-      internal = true;
-      readOnly = true;
-    };
-
-    readmeFile = mkOption {
-      type = nonEmptyStr;
+      type = relativePath;
       internal = true;
       readOnly = true;
     };
@@ -141,43 +176,45 @@ in
     name = cfg.name;
 
     files = {
-      "${cfg.licenseFile}" = {
+      "${cfg.licenseFile.file}" = mkIf cfg.licenseFile.enable {
         copyMode = "copy";
         text = license.text;
+      };
+      "${cfg.readmeFile.file}" = mkIf cfg.readmeFile.enable {
+        copyMode = "copy";
+        source = formatMarkdown {
+          inherit config;
+          filename = cfg.readmeFile.file;
+          text = cfg.readme.text;
+        };
       };
       "${cfg.versionFile}" = {
         copyMode = "copy";
         text = "${cfg.version}\n";
       };
-      "${cfg.readmeFile}" = {
-        copyMode = "copy";
-        source = "${formatWithPrettier config writeText cfg.readmeFile cfg.readme.text}";
-      };
     };
 
     template = {
       project = {
-        nameSlugUnderscore = replaceString "-" "_" cfg.nameSlug;
+        licenseFile.file = "LICENSE";
+        readmeFile.file = "README.md";
         versionFile = ".version";
-        licenseFile = "LICENSE";
-        readmeFile = "README.md";
 
-        readme.text = mkMerge [
-          (mkBefore (
-            ''
-              # ${cfg.name}
-            ''
-            + (optionalString (cfg.readme.badges != [ ]) "\n${join "\n" cfg.readme.badges}\n")
-          ))
-          (mkAfter (
-            ''
-              ## AI Policy
-
-              Use of generative AI is not permitted in this project.
-            ''
-            + (optionalString (license.readmeText != null) license.readmeText)
-          ))
-        ];
+        readme = {
+          text = mkMerge [
+            (mkBefore (
+              ''
+                # ${cfg.name}
+              ''
+              + (optionalString (cfg.readme.badges != [ ]) "\n${join "\n" cfg.readme.badges}\n")
+            ))
+            (mkAfter (
+              (optionalString cfg.readme.sections.development developmentText)
+              + (optionalString cfg.readme.sections.aiPolicy aiPolicyText)
+              + (optionalString (cfg.readme.sections.license && license.readmeText != null) license.readmeText)
+            ))
+          ];
+        };
       };
 
       languages.markdown.enable = mkDefault true;

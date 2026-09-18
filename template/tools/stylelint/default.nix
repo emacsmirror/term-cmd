@@ -1,12 +1,23 @@
 { lib, config, ... }:
 let
-  inherit (lib) getExe' mkEnableOption mkIf;
+  inherit (lib)
+    getExe'
+    mkEnableOption
+    mkIf
+    mkOption
+    ;
+  inherit (lib.types) json;
 
   cfg = config.template.tools.stylelint;
 in
 {
   options.template.tools.stylelint = {
     enable = mkEnableOption "enable";
+
+    config = mkOption {
+      type = json;
+      default = { };
+    };
   };
 
   config = mkIf cfg.enable {
@@ -17,17 +28,19 @@ in
       types = [ "css" ];
     };
 
-    template.languages.javascript = {
-      enable = true;
-      seedDevDependencies = {
-        stylelint = "17.14.1";
-        stylelint-config-standard = "40.0.0";
-      };
-      config = {
-        stylelint = {
-          extends = [ "stylelint-config-standard" ];
-          reportNeedlessDisables = true;
+    template = {
+      languages.javascript = {
+        enable = true;
+        seedDevDependencies = {
+          stylelint = "17.14.1";
+          stylelint-config-standard = "40.0.0";
         };
+        config.stylelint = cfg.config;
+      };
+
+      tools.stylelint.config = {
+        extends = [ "stylelint-config-standard" ];
+        reportNeedlessDisables = true;
       };
     };
   };

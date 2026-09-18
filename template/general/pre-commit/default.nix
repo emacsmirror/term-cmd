@@ -1,6 +1,7 @@
 {
   pkgs,
   lib,
+  templateLib,
   config,
   ...
 }:
@@ -15,7 +16,8 @@ let
   inherit (lib.attrsets) filterAttrs;
   inherit (lib.lists) optional;
   inherit (lib.strings) escapeRegex;
-  inherit (lib.types) bool listOf nonEmptyStr;
+  inherit (lib.types) bool listOf;
+  inherit (templateLib.types) regexPartialMatch;
 
   cfg = config.template.preCommit;
 in
@@ -23,8 +25,8 @@ in
   options.template.preCommit = {
     enable = mkEnableOption "enable";
 
-    excludes = mkOption {
-      type = listOf nonEmptyStr;
+    exclude = mkOption {
+      type = listOf regexPartialMatch;
       default = [ ];
     };
 
@@ -60,7 +62,7 @@ in
         "pre-merge-commit"
       ];
 
-      excludes = cfg.excludes;
+      excludes = cfg.exclude;
 
       hooks = {
         check-added-large-files = {
@@ -119,29 +121,25 @@ in
       };
     };
 
-    files = {
-      ".git/hooks/pre-push" = {
-        copyMode = "copy";
-        text = replaceStrings [ "@versionFile@" ] [ config.template.project.versionFile ] (
-          readFile ./pre-push
-        );
-        executable = true;
-      };
+    files.".git/hooks/pre-push" = {
+      copyMode = "copy";
+      text = replaceStrings [ "@versionFile@" ] [ config.template.project.versionFile ] (
+        readFile ./pre-push
+      );
+      executable = true;
     };
 
-    tasks = {
-      "${config.template.taskPrefix}:remove-legacy-hooks" = {
-        exec = "rm -f .git/hooks/*.legacy";
-        before = [ "devenv:enterShell" ];
-        after = [ "devenv:git-hooks:install" ];
-        cwd = config.git.root;
-      };
+    tasks."${config.template.taskPrefix}:remove-legacy-hooks" = {
+      exec = "rm -f .git/hooks/*.legacy";
+      before = [ "devenv:enterShell" ];
+      after = [ "devenv:git-hooks:install" ];
+      cwd = config.git.root;
     };
 
     template = {
-      gitignore = [ ".pre-commit-config.yaml" ];
+      gitignore.ignore = [ ".pre-commit-config.yaml" ];
 
-      preCommit.excludes = [
+      preCommit.exclude = [
         "^devenv\\.lock$"
         "^\\.envrc$"
       ]

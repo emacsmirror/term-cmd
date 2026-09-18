@@ -11,7 +11,6 @@ let
     mkIf
     mkOption
     ;
-  inherit (lib.attrsets) genAttrs' nameValuePair;
   inherit (lib.lists) optional;
   inherit (lib.strings) replaceString;
   inherit (lib.types) package toml;
@@ -20,7 +19,7 @@ let
   hooks = config.git-hooks.hooks;
   python = config.template.languages.python;
 
-  targetVersion = version: "py${replaceString "." "" version}";
+  targetVersion = "py${replaceString "." "" python.minVersion}";
 in
 {
   options.template.tools.ruff = {
@@ -43,35 +42,29 @@ in
     git-hooks.hooks = {
       ruff-format = {
         enable = true;
-        package = cfg.package;
         name = "python: format";
+        package = cfg.package;
         entry = "${getExe hooks.ruff-format.package} format --force-exclude";
         types = [ ];
         types_or = python.fileTags;
         require_serial = true;
       };
-    }
-    // (genAttrs' python.versions (
-      version:
-      let
-        id = "ruff-check-${version}";
-      in
-      nameValuePair id {
+      ruff-check = {
         enable = true;
+        name = "python: lint";
         package = cfg.package;
-        name = "python ${version}: lint";
-        entry = "${getExe hooks."${id}".package} check --force-exclude --target-version=${targetVersion version} --fix";
+        entry = "${getExe hooks.ruff-check.package} check --force-exclude --target-version=${targetVersion} --fix";
         types_or = python.fileTags;
         require_serial = true;
-      }
-    ));
+      };
+    };
 
     template = {
       languages.python.config.tool.ruff = cfg.config;
 
       tools.ruff.config = {
         namespace-packages = [ ".template" ];
-        target-version = targetVersion python.maxVersion;
+        target-version = targetVersion;
         lint = {
           select = [ "ALL" ];
           ignore = [

@@ -1,8 +1,7 @@
 {
-  pkgs,
+  pkgsUnstable,
   lib,
   templateLib,
-  inputs,
   config,
   ...
 }:
@@ -14,12 +13,9 @@ let
     mkOption
     ;
   inherit (lib.types) package;
-  inherit (templateLib) localRelPath;
+  inherit (templateLib.types) relativePath;
 
   cfg = config.template.languages.shell;
-
-  # TODO: remove this once https://github.com/NixOS/nixpkgs/pull/559030 is merged upstream
-  pkgs-bats = import inputs.nixpkgs-bats { system = pkgs.stdenv.system; };
 in
 {
   imports = [ ./bats.nix ];
@@ -32,7 +28,9 @@ in
 
       package = mkOption {
         type = package;
-        default = pkgs-bats.bats.withLibraries (
+        # TODO: switch to pkgs once this commit is in:
+        # https://github.com/NixOS/nixpkgs/commit/bd41942fe66b0fe0ee02ff6de054b34839c250e0
+        default = pkgsUnstable.bats.withLibraries (
           p: with p; [
             bats-assert
             bats-support
@@ -41,7 +39,7 @@ in
       };
 
       testDir = mkOption {
-        type = localRelPath;
+        type = relativePath;
         default = config.template.testDir;
       };
     };
@@ -53,7 +51,7 @@ in
     template.tools = {
       shellcheck.enable = mkDefault true;
       shfmt.enable = mkDefault true;
-      shebangChecker.allowedShebangs = [
+      shebangChecker.allowShebangs = [
         # /bin/bash doesn't work on NixOS, so only the following is allowed
         "/usr/bin/env bash"
       ];

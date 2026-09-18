@@ -13,16 +13,14 @@ in
   };
 
   config = mkIf cfg.enable {
-    files = {
-      "${config.git.root}/install.sh" = {
-        copyMode = "copy";
-        text =
-          replaceStrings
-            [ "@repo@" "@templateDir@" ]
-            [ config.template.templateRepo config.template.defaultDir ]
-            (readFile ./install.sh);
-        executable = true;
-      };
+    files."install.sh" = {
+      copyMode = "copy";
+      text =
+        replaceStrings
+          [ "@repo@" "@templateDir@" ]
+          [ config.template.templateRepo config.template.defaultDir ]
+          (readFile ./install.sh);
+      executable = true;
     };
   };
 }

@@ -12,8 +12,10 @@
 .markdownlint.json
 .pre-commit-config.yaml
 .prettierignore
+.prettierrc
 .sgconfig.yml
 .shellcheckrc
+.tombi.toml
 .typos.toml
 .yamllint.yaml
 __pycache__/

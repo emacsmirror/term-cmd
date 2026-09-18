@@ -8,12 +8,10 @@ let
 in
 {
   config = mkIf cfg.enable {
-    tasks = {
-      "${taskName}" = {
-        package = cfg.internalPython;
-        exec = readFile ./uv_update_deps.py;
-        cwd = config.git.root;
-      };
+    tasks."${taskName}" = {
+      package = cfg.internalPython;
+      exec = readFile ./uv_update_deps.py;
+      cwd = config.git.root;
     };
 
     template.updates.deps.tasks = [ taskName ];

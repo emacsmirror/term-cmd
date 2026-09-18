@@ -1,6 +1,7 @@
 {
   pkgs,
   lib,
+  templateLib,
   config,
   ...
 }:
@@ -9,9 +10,18 @@ let
     getExe
     mkEnableOption
     mkIf
+    mkMerge
     mkOption
     ;
-  inherit (lib.types) json package;
+  inherit (lib.attrsets) genAttrs;
+  inherit (lib.types)
+    json
+    listOf
+    nonEmptyStr
+    package
+    ;
+  inherit (templateLib) prune;
+  inherit (templateLib.formatters) formatJSON;
 
   cfg = config.template.tools.markdownlint;
   hooks = config.git-hooks.hooks;
@@ -26,6 +36,11 @@ in
       default = pkgs.markdownlint-cli2;
     };
 
+    disableRules = mkOption {
+      type = listOf nonEmptyStr;
+      default = [ ];
+    };
+
     config = mkOption {
       type = json;
       default = { };
@@ -35,28 +50,39 @@ in
   config = mkIf cfg.enable {
     packages = [ cfg.package ];
 
-    files."${configFile}".json = cfg.config;
+    files."${configFile}".source = formatJSON {
+      inherit config;
+      filename = configFile;
+      data = prune cfg.config;
+    };
 
     git-hooks.hooks.markdownlint = {
       enable = true;
-      package = cfg.package;
       name = "markdown: lint";
+      package = cfg.package;
       entry = "${getExe hooks.markdownlint.package} --fix";
       files = "";
       types_or = [ "markdown" ];
     };
 
     template = {
-      gitignore = [ configFile ];
+      gitignore.ignore = [ configFile ];
 
-      tools.markdownlint.config = {
-        extends = "markdownlint/style/prettier";
-        code-block-style = {
-          style = "fenced";
-        };
-        code-fence-style = {
-          style = "backtick";
-        };
+      tools.markdownlint = {
+        config = mkMerge [
+          {
+            extends = "markdownlint/style/prettier";
+            code-block-style = {
+              style = "fenced";
+            };
+            code-fence-style = {
+              style = "backtick";
+            };
+          }
+          (genAttrs cfg.disableRules (_rule: {
+            enabled = false;
+          }))
+        ];
       };
     };
   };

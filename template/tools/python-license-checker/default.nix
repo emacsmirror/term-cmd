@@ -6,7 +6,13 @@
 }:
 let
   inherit (pkgs) writeShellScript;
-  inherit (lib) getExe mkEnableOption mkIf;
+  inherit (lib)
+    getExe
+    mkEnableOption
+    mkIf
+    mkOption
+    ;
+  inherit (lib.types) listOf nonEmptyStr toml;
 
   cfg = config.template.tools.pythonLicenseChecker;
 
@@ -23,6 +29,16 @@ in
 {
   options.template.tools.pythonLicenseChecker = {
     enable = mkEnableOption "enable";
+
+    ignorePackages = mkOption {
+      type = listOf nonEmptyStr;
+      default = [ ];
+    };
+
+    config = mkOption {
+      type = toml;
+      default = { };
+    };
   };
 
   config = mkIf cfg.enable {
@@ -34,8 +50,18 @@ in
       pass_filenames = false;
     };
 
-    template.languages.python.seedDevDependencies = {
-      licensecheck = "==2026.0.8";
+    template = {
+      languages.python = {
+        config.tool.licensecheck = mkIf (cfg.config != { }) cfg.config;
+
+        seedDevDependencies = {
+          licensecheck = "==2026.0.8";
+        };
+      };
+
+      tools.pythonLicenseChecker.config = mkIf (cfg.ignorePackages != [ ]) {
+        ignore_packages = cfg.ignorePackages;
+      };
     };
   };
 }
