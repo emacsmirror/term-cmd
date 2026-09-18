@@ -12,7 +12,7 @@ in
     project = {
       name = "Project Template";
       author = "Callie Cameron";
-      version = "0.2.3";
+      version = "0.2.4";
       copyrightYears = {
         start = "2025";
         end = "2026";

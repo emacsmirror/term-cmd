@@ -146,7 +146,7 @@ in
         "mypy"
         "ty"
       ];
-      default = "mypy";
+      default = "ty";
     };
 
     fileTags = mkOption { type = nonEmptyListOf nonEmptyStr; };
