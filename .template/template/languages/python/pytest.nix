@@ -11,7 +11,6 @@ let
     ;
 
   cfg = config.template.languages.python;
-  project = config.template.project;
 
   pytestArgs =
     version: tag:
@@ -33,11 +32,9 @@ let
 in
 {
   config = mkIf (cfg.enable && cfg.pytest.enable) {
-    files = {
-      "${cfg.pytest.testDir}/__init__.py" = {
-        copyMode = "copy";
-        text = "";
-      };
+    files."${cfg.pytest.testDir}/__init__.py" = {
+      copyMode = "copy";
+      text = "";
     };
 
     scripts.template-new-test-pytest.exec = ''
@@ -63,7 +60,7 @@ in
             coverage.run.omit = [ "/nix/store/*" ];
             pytest = {
               addopts = [
-                "--cov${optionalString cfg.isPackage "=${project.nameSlugUnderscore}"}"
+                "--cov${optionalString cfg.isPackage "=${cfg.projectNameUnderscore}"}"
                 "--cov-report=term-missing"
                 "--strict-markers"
                 "--suppress-no-test-exit-code"
@@ -84,7 +81,7 @@ in
         };
       };
 
-      gitignore = [ ".coverage" ];
+      gitignore.ignore = [ ".coverage" ];
 
       clean.deepCleanCommands = [ "rm -rf .pytest_cache .coverage" ];
     };

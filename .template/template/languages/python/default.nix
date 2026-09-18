@@ -25,18 +25,18 @@ let
     optionals
     uniqueStrings
     ;
-  inherit (lib.strings) join trim;
+  inherit (lib.strings) join replaceString trim;
   inherit (lib.types)
     attrsOf
     bool
+    enum
     listOf
     nonEmptyListOf
     nonEmptyStr
     package
-    strMatching
     toml
     ;
-  inherit (templateLib) localRelPath;
+  inherit (templateLib.types) relativePath twoComponentVersion;
 
   cfg = config.template.languages.python;
   hooks = config.git-hooks.hooks;
@@ -59,8 +59,6 @@ let
   latestPython = last (
     naturalSort (attrNames (inputs.nixpkgs-python.packages."${pkgs.stdenv.system}"))
   );
-
-  versionString = strMatching "[1-9][0-9]*\\.[1-9][0-9]*";
 
   sortedVersions = naturalSort cfg.versions;
 
@@ -90,7 +88,7 @@ let
 
   snapshotSource = "/${config.template.dir}/languages/python/ast-grep-snapshot.yml";
 
-  packageSrcDir = "src/${project.nameSlugUnderscore}";
+  packageSrcDir = "src/${cfg.projectNameUnderscore}";
 in
 {
   imports = [
@@ -102,11 +100,21 @@ in
   options.template.languages.python = {
     enable = mkEnableOption "enable";
 
-    versions = mkOption { type = nonEmptyListOf versionString; };
+    versions = mkOption { type = nonEmptyListOf twoComponentVersion; };
 
     nixPackages = mkOption {
       type = listOf nonEmptyStr;
       default = [ ];
+    };
+
+    projectName = mkOption {
+      type = nonEmptyStr;
+      default = project.nameSlug;
+    };
+
+    projectNameUnderscore = mkOption {
+      type = nonEmptyStr;
+      readOnly = true;
     };
 
     isPackage = mkOption {
@@ -133,6 +141,14 @@ in
       };
     };
 
+    typeChecker = mkOption {
+      type = enum [
+        "mypy"
+        "ty"
+      ];
+      default = "mypy";
+    };
+
     fileTags = mkOption { type = nonEmptyListOf nonEmptyStr; };
 
     config = mkOption {
@@ -146,12 +162,12 @@ in
     };
 
     minVersion = mkOption {
-      type = versionString;
+      type = twoComponentVersion;
       readOnly = true;
     };
 
     maxVersion = mkOption {
-      type = versionString;
+      type = twoComponentVersion;
       readOnly = true;
     };
 
@@ -159,13 +175,13 @@ in
       enable = mkEnableOption "enable";
 
       testDir = mkOption {
-        type = localRelPath;
+        type = relativePath;
         default = config.template.testDir;
       };
     };
 
     internalVersion = mkOption {
-      type = versionString;
+      type = twoComponentVersion;
       internal = true;
       readOnly = true;
     };
@@ -212,7 +228,7 @@ in
           allGroups = true;
         };
       };
-      # TODO: switch LSP to ty
+      lsp.package = mkIf (cfg.typeChecker == "ty") config.template.tools.ty.package;
     };
 
     files = {
@@ -272,6 +288,8 @@ in
 
     template = {
       languages.python = {
+        projectNameUnderscore = replaceString "-" "_" cfg.projectName;
+
         package = genAttrs cfg.versions (
           version:
           inputs.nixpkgs-python.packages."${pkgs.stdenv.system}"."${version}".withPackages (
@@ -289,12 +307,12 @@ in
 
         config = {
           project = {
-            name = project.nameSlug;
+            name = cfg.projectName;
             version = project.version;
             requires-python = ">=${cfg.minVersion}";
-            readme = project.readmeFile;
+            readme = project.readmeFile.file;
             license = project.license;
-            license-files = [ project.licenseFile ];
+            license-files = [ project.licenseFile.file ];
           };
           build-system = {
             requires = [ buildSystemRequires ];
@@ -317,10 +335,11 @@ in
       };
 
       tools = {
-        mypy.enable = mkDefault true;
+        mypy.enable = mkDefault (cfg.typeChecker == "mypy");
+        ty.enable = mkDefault (cfg.typeChecker == "ty");
         ruff.enable = mkDefault true;
         pythonLicenseChecker.enable = mkDefault true;
-        shebangChecker.allowedShebangs = [ "/usr/bin/env python3" ];
+        shebangChecker.allowShebangs = [ "/usr/bin/env python3" ];
 
         astGrep = {
           enable = mkDefault true;
@@ -334,7 +353,6 @@ in
         # These are ignoring the snapshot source file in the template dir, not
         # the installed snapshot - that's handled by ast-grep
         prettier.ignore = [ snapshotSource ];
-
         yamllint.ignore = [ snapshotSource ];
       };
 
@@ -342,13 +360,13 @@ in
         "![python](https://img.shields.io/badge/python-${join "_%7C_" sortedVersions}-blue)"
       ];
 
-      gitignore = [ "__pycache__/" ];
+      gitignore.ignore = [ "__pycache__/" ];
 
       clean.deepCleanCommands = [
         "find . -depth '(' -type d -name '__pycache__' ')' -exec rm -r '{}' ';'"
       ];
 
-      preCommit.excludes = [ "^uv\\.lock$" ];
+      preCommit.exclude = [ "^uv\\.lock$" ];
     };
   };
 }

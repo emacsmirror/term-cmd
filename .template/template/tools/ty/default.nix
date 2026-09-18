@@ -1,10 +1,12 @@
 {
+  pkgs,
   lib,
   templateLib,
   config,
   ...
 }:
 let
+  inherit (builtins) pathExists;
   inherit (lib)
     getExe
     mkEnableOption
@@ -12,17 +14,22 @@ let
     mkOption
     ;
   inherit (lib.strings) escapeShellArg join;
-  inherit (lib.types) toml;
+  inherit (lib.types) package toml;
   inherit (templateLib.types) relativePath;
 
-  cfg = config.template.tools.mypy;
+  cfg = config.template.tools.ty;
   python = config.template.languages.python;
 
   targetVersion = python.minVersion;
 in
 {
-  options.template.tools.mypy = {
+  options.template.tools.ty = {
     enable = mkEnableOption "enable";
+
+    package = mkOption {
+      type = package;
+      default = pkgs.ty;
+    };
 
     stubDir = mkOption {
       type = relativePath;
@@ -36,39 +43,32 @@ in
   };
 
   config = mkIf cfg.enable {
-    git-hooks.hooks.mypy = {
+    packages = [ cfg.package ];
+
+    git-hooks.hooks.ty = {
       enable = true;
       name = "python: typecheck";
       entry = join " " [
-        "${getExe config.languages.python.uv.package}"
-        "run"
-        "mypy"
-        "--python-version"
+        "${getExe cfg.package}"
+        "check"
+        "--python-version "
         "${escapeShellArg targetVersion}"
       ];
       types_or = python.fileTags;
-      require_serial = true;
     };
 
     template = {
-      languages.python = {
-        seedDevDependencies = {
-          mypy = "==2.3.1";
+      languages.python.config.tool.ty = cfg.config;
+
+      tools.ty.config = {
+        rules = {
+          all = "error";
         };
-        config.tool.mypy = cfg.config;
+        environment = {
+          extra-paths = mkIf (pathExists "${config.git.root}/${cfg.stubDir}") [ cfg.stubDir ];
+          python-version = targetVersion;
+        };
       };
-
-      tools.mypy.config = {
-        explicit_package_bases = !python.isPackage;
-        mypy_path = cfg.stubDir;
-        namespace_packages = !python.isPackage;
-        pretty = true;
-        python_version = targetVersion;
-        scripts_are_modules = true;
-        strict = true;
-      };
-
-      clean.deepCleanCommands = [ "rm -rf .mypy_cache" ];
     };
   };
 }

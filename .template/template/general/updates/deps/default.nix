@@ -17,18 +17,14 @@ in
   };
 
   config = mkIf cfg.enable {
-    tasks = {
-      "${taskName}" = {
-        exec = "true";
-        cwd = config.git.root;
-        after = cfg.tasks;
-      };
+    tasks."${taskName}" = {
+      exec = "true";
+      cwd = config.git.root;
+      after = cfg.tasks;
     };
 
-    scripts = {
-      template-update-deps.exec = ''
-        devenv tasks run ${taskName}
-      '';
-    };
+    scripts.template-update-deps.exec = ''
+      devenv tasks run ${taskName}
+    '';
   };
 }

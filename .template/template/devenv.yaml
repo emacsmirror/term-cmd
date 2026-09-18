@@ -11,6 +11,5 @@ inputs:
         follows: nixpkgs
   nixpkgs-python:
     url: github:cachix/nixpkgs-python
-  # TODO: remove this once https://github.com/NixOS/nixpkgs/pull/559030 is merged upstream
-  nixpkgs-bats:
-    url: github:NixOS/nixpkgs/bd41942fe66b0fe0ee02ff6de054b34839c250e0
+  nixpkgs-unstable:
+    url: github:NixOS/nixpkgs/nixos-unstable

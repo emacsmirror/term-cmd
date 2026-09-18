@@ -12,44 +12,48 @@ in
     project = {
       name = "Project Template";
       author = "Callie Cameron";
-      version = "0.2.2";
+      version = "0.2.3";
       copyrightYears = {
         start = "2025";
         end = "2026";
       };
-      readme.text = ''
-        A [Devenv](https://devenv.sh/) template for multi-language projects.
+      readme = {
+        text = ''
+          A [Devenv](https://devenv.sh/) template for multi-language projects.
 
-        This is mainly intended for personal use – it includes the languages and tools that I use.
+          This is mainly intended for personal use – it includes the [languages](template/languages) and [tools](template/tools) that I use.
 
-        ## Installation
+          ## Installation
 
-        Run `./install.sh` in your project directory.
+          Run `install.sh` in your project directory.
 
-        ## Usage
+          ## Usage
 
-        Edit `devenv.nix` to enable the desired languages, e.g.:
+          Edit `devenv.nix` to enable the desired languages, e.g.:
 
-        ```nix
-        { ... }: {
-          template = {
-            languages = {
-              shell.enable = true;
-              python = {
-                enable = true;
-                versions = [
-                  "3.14"
-                ];
+          ```nix
+          { ... }: {
+            template = {
+              languages = {
+                shell.enable = true;
+                python = {
+                  enable = true;
+                  versions = [
+                    "3.14"
+                  ];
+                };
               };
             };
-          };
-        }
-        ```
+          }
+          ```
 
-        ## Updating
+          ## Updating
 
-        Run `template-update-template`.
-      '';
+          Run `template-update-template`.
+        '';
+
+        sections.development = false;
+      };
     };
 
     languages = {
@@ -63,6 +67,7 @@ in
       python = {
         enable = true;
         versions = [ config.template.languages.python.internalVersion ];
+        typeChecker = "ty";
         pytest.enable = true;
       };
       shell = {
@@ -72,12 +77,15 @@ in
       toml.enable = true;
       yaml.enable = true;
     };
+
+    tools.npins = {
+      enable = true;
+      root = "testdata/npins";
+    };
   };
 
-  files = {
-    "${config.template.dir}/template-repo" = {
-      copyMode = "copy";
-      text = "${forge}/${owner}/${repo}\n";
-    };
+  files."${config.template.dir}/template-repo" = {
+    copyMode = "copy";
+    text = "${forge}/${owner}/${repo}\n";
   };
 }

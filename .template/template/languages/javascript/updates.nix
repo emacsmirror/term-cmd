@@ -8,11 +8,9 @@ let
 in
 {
   config = mkIf cfg.enable {
-    tasks = {
-      "${taskName}" = {
-        exec = readFile ./npm-update-deps.sh;
-        cwd = config.git.root;
-      };
+    tasks."${taskName}" = {
+      exec = readFile ./npm-update-deps.sh;
+      cwd = config.git.root;
     };
 
     template.updates.deps.tasks = [ taskName ];

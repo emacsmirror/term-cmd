@@ -1,5 +1,4 @@
 {
-  pkgs,
   lib,
   templateLib,
   config,
@@ -13,8 +12,6 @@ let
     isAttrs
     match
     ;
-  inherit (pkgs) runCommandLocal;
-  inherit (pkgs.writers) writeTOML;
   inherit (lib) mkDefault mkIf;
   inherit (lib.attrsets)
     genAttrs'
@@ -24,9 +21,8 @@ let
     nameValuePair
     recursiveUpdate
     ;
-  inherit (lib.strings) escapeShellArg;
-  inherit (templateLib) readFileOr;
-  inherit (templateLib.seededDeps) mergeDeps;
+  inherit (templateLib) mergeDeps readFileOr;
+  inherit (templateLib.formatters) formatTOML;
 
   cfg = config.template.languages.python;
   configFile = "pyproject.toml";
@@ -67,33 +63,24 @@ let
   mergedDeps = mapAttrsRecursiveCond (set: all isAttrs (attrValues set)) (
     _path: value: renderDeps value
   ) (mergeDeps seedDeps currentDeps);
-
-  rawPyproject = writeTOML configFile (recursiveUpdate cfg.config mergedDeps);
-
-  pyproject = runCommandLocal configFile { } ''
-    cat >tombi.toml <<EOF
-      [[schemas]]
-      path = "tombi://www.schemastore.org/pyproject.json"
-      include = ["$out"]
-    EOF
-
-    cat >$out <<EOF
-    # Mostly auto-generated; dependencies can be edited here, but everything else
-    # should be edited in devenv.nix.
-
-    EOF
-
-    cat ${escapeShellArg rawPyproject} >>$out
-
-    ${config.template.tools.tombi.formatCommand} --offline $out
-  '';
 in
 {
   config = mkIf cfg.enable {
-    files = {
-      "${configFile}" = {
-        copyMode = "copy";
-        source = pyproject;
+    files."${configFile}" = {
+      copyMode = "copy";
+      source = formatTOML {
+        inherit config;
+        filename = configFile;
+        data = recursiveUpdate cfg.config mergedDeps;
+        comment = "Mostly auto-generated; dependencies can be edited here, but everything else should be edited in devenv.nix.";
+        tombiConfig = {
+          schemas = [
+            {
+              path = "tombi://www.schemastore.org/pyproject.json";
+              include = [ "*" ];
+            }
+          ];
+        };
       };
     };
 

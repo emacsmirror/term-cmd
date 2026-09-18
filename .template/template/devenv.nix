@@ -1,6 +1,7 @@
 {
   pkgs,
   lib,
+  inputs,
   config,
   ...
 }:
@@ -16,7 +17,8 @@ let
   inherit (lib.types) bool ints nonEmptyStr;
 
   templateLib = import ./lib { inherit pkgs lib; };
-  inherit (templateLib) findModules localRelPath;
+  inherit (templateLib) findModules;
+  inherit (templateLib.types) relativePath;
 
   cfg = config.template;
   defaultDir = ".template";
@@ -32,12 +34,12 @@ in
 
   options.template = {
     dir = mkOption {
-      type = localRelPath;
+      type = relativePath;
       default = defaultDir;
     };
 
     testDir = mkOption {
-      type = localRelPath;
+      type = relativePath;
       default = "tests";
     };
 
@@ -58,7 +60,7 @@ in
     };
 
     defaultDir = mkOption {
-      type = nonEmptyStr;
+      type = relativePath;
       internal = true;
       readOnly = true;
     };
@@ -72,13 +74,20 @@ in
 
   config = mkMerge [
     {
-      _module.args = { inherit templateLib; };
+      _module.args = {
+        inherit templateLib;
+        pkgsUnstable = import inputs.nixpkgs-unstable { system = pkgs.stdenv.system; };
+      };
 
       devenv.warnOnNewVersion = false;
 
       template = {
         defaultDir = defaultDir;
         taskPrefix = taskPrefix;
+
+        project.readmeFile.enable = mkDefault true;
+        project.licenseFile.enable = mkDefault true;
+        gitignore.enable = mkDefault true;
         preCommit.enable = mkDefault true;
         clean.enable = mkDefault true;
 
@@ -94,6 +103,7 @@ in
 
         updates = {
           template.enable = mkDefault true;
+          inputs.enable = mkDefault true;
           deps.enable = mkDefault true;
         };
       };
@@ -106,11 +116,9 @@ in
         languages.python.includeInternalDeps = true;
       };
 
-      files = {
-        "${cfg.dir}/version" = {
-          copyMode = "copy";
-          text = "${cfg.project.version}\n";
-        };
+      files."${cfg.dir}/version" = {
+        copyMode = "copy";
+        text = "${cfg.project.version}\n";
       };
     })
   ];
